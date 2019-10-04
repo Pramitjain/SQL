@@ -1,3 +1,11 @@
 select * from sys.syscomments 
 
 select * from sys.objects a where  type ='P' and name like '%usp_na%'
+
+
+select * from sys.tables
+
+
+select * from sys.procedures 
+
+select * from sys.types 
