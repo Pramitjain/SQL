@@ -1,0 +1,113 @@
+USE [ShippingBill_Dispatch]
+GO
+/****** Object:  StoredProcedure [dbo].[usp_ShippingBill_SendBulk_EMAIL]    Script Date: 10/4/2019 3:58:15 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+ALTER procedure [dbo].[usp_ShippingBill_SendBulk_EMAIL]
+as
+begin
+	
+	DECLARE @uid int,  @GSTINNO VARCHAR(max),@Email_id VARCHAR(250), @File_attachement varchar(max), @EmailTemplateId int, @PdfHdr_Sequence varchar(100), 
+	@PdfDtl_Sequence varchar(100), @HTML varchar(max), @Subject varchar(300)
+
+	
+	DECLARE MAIL_CUR CURSOR FOR
+
+	SELECT  a.f_Id,
+		    a.f_GSTINNO, 
+			a.f_GSTINEmailId, 
+			case when (ISNULL(a.f_GSTFilePath,'') ='' and (ISNULL(a.f_GSTExcelFilePath,''))='')  then ''
+				 when (ISNULL(a.f_GSTFilePath,'') !='' and (ISNULL(a.f_GSTExcelFilePath,'')) !='') then a.f_GSTFilePath + '##' + a.f_GSTExcelFilePath
+				 when (ISNULL(a.f_GSTFilePath,'') ='' and (ISNULL(a.f_GSTExcelFilePath,'')) !='') then  a.f_GSTExcelFilePath
+				 when (ISNULL(a.f_GSTFilePath,'') !='' and (ISNULL(a.f_GSTExcelFilePath,'')) ='') then  a.f_GSTFilePath
+				 else '' end as f_GSTExcelFilePath, 
+			a.f_EmailtempalteId,
+			a.f_PdfHdr_Sequence,
+			a.f_PdfDtl_Sequence
+			
+			 FROM t_ShippingBill_PdfGSTDetails a WITH(NOLOCK) inner join t_ShippingBill_Header b WITH(NOLOCK) on a.f_PdfHdr_Sequence = b.f_PdfHdr_Sequence  WHERE (ISNULL(a.f_EmailSent ,0)=0 or a.f_EmailSent =0) and b.f_IsErrorSavingPDFData_ExcelPath =0 and b.f_IsErrorSavingGSTINPDFData_ExcelPath =0 
+			 --and a.f_PdfHdr_Sequence ='SEQNO30143' and a.f_id=42928
+	 
+	 	OPEN MAIL_CUR
+
+	FETCH NEXT FROM MAIL_CUR INTO @uid, @GSTINNO, @Email_id, @File_attachement, @EmailTemplateId, @PdfHdr_Sequence, @PdfDtl_Sequence
+
+	WHILE @@FETCH_STATUS = 0
+	 BEGIN
+	 
+	 set @HTML='';
+
+	 SELECT  @HTML= f_EmailTemplate FROM dbo.[t_ShippingBill_EmailTemplate] WITH(NOLOCK) where f_TemplateId= @EmailTemplateId and f_Active=1    
+
+	 declare @result int ;
+
+		 if(@EmailTemplateId=1)
+			 begin
+				
+	
+				--set @File_attachement =REPLACE(REPLACE(@File_attachement,'$',':'),';','');
+				set @File_attachement =REPLACE(REPLACE(Replace(@File_attachement,'$',':'),';',''),'##',';');			
+				--print @File_attachement;
+				set @Subject = 'Shipping Bill PDF For ' + @GSTINNO;
+			 end
+		--Bind Template    
+		if(@EmailTemplateId=2)
+			begin
+				 SET @HTML = REPLACE(@HTML,'{PDFSEQ}', @PdfHdr_Sequence); 
+				 SET @HTML = REPLACE(@HTML,'{PDFDtlSEQ}', @PdfDtl_Sequence); 
+				 SET @HTML = REPLACE(@HTML,'{ExcelPath}',@File_attachement); 
+				 set @File_attachement =REPLACE(REPLACE(Replace(@File_attachement,'$',':'),';',''),'##',';');
+				 
+				 set @Subject = 'Shipping Bill PDF ';
+			end
+------------------------------------------------------------------------------------------------
+
+--print @HTMl;
+   --Send Email Logic Starts
+      	EXEC @result = MSDB.DBO.SP_SEND_DBMAIL
+
+					                @RECIPIENTS='irp4@dhl.com',
+								  --@RECIPIENTS='pramit.jain@dhl.com',
+					              @copy_recipients ='pramit.jain@dhl.com;nayan.rakholiya@dhl.com',
+
+					              @blind_copy_recipients='',
+
+					              @SUBJECT=@Subject,
+
+					              @BODY=@HTML,
+
+					              @BODY_FORMAT = 'HTML',
+								  
+								  @file_attachments= @File_attachement
+
+								 --@file_attachments='U:\Shipping Bill\GSTINPDF\27BIFPK6086A1ZC_SEQNO2_31052019_142808_636949096886507067.pdf;U:\Shipping Bill\GSTINPDF\13122018H4_Print_CSB_V_Sample_15052019_094633.pdf'
+
+	--Send Email Logic Ends
+
+
+	-- After Sending Email Update the table  Flag
+
+	
+	if(@result=0)
+		BEGIN
+				update t_ShippingBill_PdfGSTDetails set f_EmailSent=1 , f_EmailSentDate= GETDATE(), f_Updatedby ='SYSTEM', f_UpdatedbyUserId='SYSTEM SCHEDULE',						f_UpdatedDate= GETDATE() where f_Id =@uid and f_GSTINNO= @GSTINNO and f_Active = 1 and ISNULL(f_EmailSent,'') =''
+	 	 END
+	ELSE
+		BEGIN
+			update t_ShippingBill_PdfGSTDetails set f_EmailSent=2,f_EmailErrorMessage= @@ERROR , f_Updatedby ='SYSTEM', f_UpdatedbyUserId='SYSTEM SCHEDULE',										f_UpdatedDate= GETDATE() where f_Id =@uid and f_GSTINNO= @GSTINNO and f_Active = 1 and ISNULL(f_EmailSent,'') =''
+		END
+	 --print @GSTINNO
+
+      FETCH NEXT FROM MAIL_CUR INTO @uid, @GSTINNO, @Email_id, @File_attachement, @EmailTemplateId, @PdfHdr_Sequence, @PdfDtl_Sequence
+
+	end
+
+	close MAIL_CUR
+	deallocate MAIL_CUR
+
+end
+
+
+
