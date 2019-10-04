@@ -1,0 +1,13 @@
+
+declare @openquery varchar(max)
+
+set @openquery='select * from openquery(IASLINK,''select piece,	weight,	desc,	cnsg_name,	cnsg_cont_name,	cnsg_add1,
+
+	cnsg_add2,	cnsg_add3,	cnsg_post_code,	cnsg_phone_no,bill_acc_no,bill_co_name,bill_cont_name,Bill_add1,Bill_add2,Bill_add3,bill_Phone_no,bill_post_code,inv_no
+
+ from iasadm.iasbd where inv_no =''
+ 
+  
+ exec (@openquery + @tsql)
+ 
+ 
