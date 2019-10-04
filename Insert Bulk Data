@@ -1,0 +1,59 @@
+
+USE [ShippingBill_Dispatch]
+GO
+
+/****** Object:  UserDefinedTableType [dbo].[usp_ShippingBill_InsertGSTDetails_type]    Script Date: 10/4/2019 3:58:39 PM ******/
+CREATE TYPE [dbo].[usp_ShippingBill_InsertGSTDetails_type] AS TABLE(
+	[f_PdfHdr_Sequence] [varchar](100) NULL,
+	[f_PdfDtl_Sequence] [varchar](100) NULL,
+	[f_GSTINNO] [varchar](200) NULL,
+	[f_GSTINEmailId] [varchar](200) NULL,
+	[f_GSTFileDirectory] [varchar](300) NULL,
+	[f_GSTFilePath] [varchar](500) NULL,
+	[f_GSTExcelFilePath] [varchar](500) NULL,
+	[f_AWBSplitedCount] [int] NULL,
+	[f_GIAClubCount] [int] NULL,
+	[f_Createdby] [varchar](100) NULL,
+	[f_CreatedbyUserId] [varchar](100) NULL,
+	[f_CreatedIp] [varchar](40) NULL
+)
+GO
+
+
+
+USE [ShippingBill_Dispatch]
+GO
+/****** Object:  StoredProcedure [dbo].[usp_ShippingBill_InsertPdfGSTDetails]    Script Date: 10/4/2019 3:59:06 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+ALTER procedure [dbo].[usp_ShippingBill_InsertPdfGSTDetails](
+@tblC usp_ShippingBill_InsertGSTDetails_type READONLY,
+	@Message varchar(200) output
+)
+
+as
+
+begin
+	set NOCOUNT ON;
+
+	insert into t_ShippingBill_PdfGSTDetails(f_EmailtempalteId, f_PdfHdr_Sequence, f_PdfDtl_Sequence, f_GSTINNO, f_GSTINEmailId, f_GSTFileDirectory,  f_GSTFilePath, f_GSTExcelFilePath, f_Active, f_Createdby, f_CreatedbyUserId, f_CreatedDate, f_CreatedIp)
+
+	
+	select 1, a.f_PdfHdr_Sequence, a.f_PdfDtl_Sequence, a.f_GSTINNO, a.f_GSTINEmailId, a.f_GSTFileDirectory, a.f_GSTFilePath, a.f_GSTExcelFilePath, 1, a.f_Createdby, a.f_CreatedbyUserId, GETDATE(), a.f_CreatedIp from @tblC a 
+
+	set @Message = 'Data Added Succsfully.';
+
+	update a
+		set a.f_AWBSplitedCount = b.f_AWBSplitedCount ,
+		a.f_GIAClubCount = b.f_GIAClubCount
+		 from [dbo].[t_ShippingBill_Detail] a WITH(NOLOCK) 
+		 inner join @tblC b 
+		  on  LTRIM(RTRIM(LOWER(a.f_PdfHdr_Sequence))) = LTRIM(RTRIM(LOWER(b.f_PdfHdr_Sequence))) 
+		  and LTRIM(RTRIM(LOWER(a.f_PdfDtl_Sequence))) = LTRIM(RTRIM(LOWER(b.f_PdfDtl_Sequence))) 
+
+end
+
