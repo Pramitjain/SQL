@@ -1,0 +1,11 @@
+USE [ShippingBill_Dispatch]
+GO
+
+/****** Object:  Index [IDX_t_ShippingBill_PdfHeader_PdfHdr_Sequence]    Script Date: 10/11/2019 9:11:29 AM ******/
+CREATE NONCLUSTERED INDEX [IDX_t_ShippingBill_PdfHeader_PdfHdr_Sequence] ON [dbo].[t_ShippingBill_Header]
+(
+	[f_PdfHdr_Sequence] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+GO
+
+
