@@ -1,1 +1,11 @@
 ISNULL(REPLACE(Convert(varchar(11), b.f_PurchaseDate,106),' ','-') +  Right(Convert(VarChar(20),b.f_PurchaseDate,100),8),'')END   as PurchaseDate,
+
+
+
+select convert(varchar(12),GETDATE())
+
+
+DECLARE @date datetime2 = '2018-07-01';
+set @date = (select convert(varchar(12),GETDATE()-37));
+
+SELECT FORMAT(@date, 'ddd') AS Result;
