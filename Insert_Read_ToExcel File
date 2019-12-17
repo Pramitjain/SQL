@@ -1,0 +1,19 @@
+drop table t_test
+--create table t_test(AWB varchar(200))
+			
+DECLARE  @SQLINSERT varchar(MAX) 
+
+SET @SQLINSERT= 'SELECT * INTO t_test FROM OpenRowSet(''Microsoft.ACE.OLEDB.12.0'',''Excel 8.0;HDR=yes;IMEX=1;
+				Database=F:\Shipping\Test.xlsx;'',''select * from  [Sheet1$]'')  '
+
+EXECUTE(@SQLINSERT)
+
+
+
+insert into OPENROWSET('Microsoft.ACE.OLEDB.12.0','Excel 8.0;HDR=yes;Empty Text Mode=NullAsEmpty;Database=F:\Shipping\Test.xlsx;', 'SELECT * FROM [Sheet1$]') 
+select top 2 [f_Createdby] FROM [dbo].[t_DoxScreening_NegativeList]
+
+
+exec master..xp_cmdshell 'del F:\Shipping\Test.xlsx' 
+
+exec master..xp_cmdshell 'copy F:\Shipping\Test.xlsx F:\Shipping\myFile_12.xlsx' 
