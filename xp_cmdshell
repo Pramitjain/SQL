@@ -1,0 +1,114 @@
+
+
+
+alter procedure usp_SIS_GetMultipleDeliveryAttemptReport_1
+
+as
+
+begin
+
+	--Delete Existing File
+	declare @Cmd_DelFile varchar(100)
+	set @Cmd_DelFile = 'del F:\Shipping\Data_' + replace(cast(getdate() as date),'-','') + '.xlsx'
+	
+	exec xp_cmdshell @Cmd_DelFile;
+
+	-- To Copy File 
+
+	
+	declare @Cmd varchar(100)
+	set @Cmd = 'copy F:\Shipping\Test.xlsx F:\Shipping\Data_' + replace(cast(getdate() as date),'-','') + '.xlsx'
+	
+	exec xp_cmdshell @cmd;
+
+		--exec master..xp_cmdshell 'copy F:\Shipping\Test.xlsx F:\Shipping\myFile_12.xlsx' 
+
+	-- To Delete File GETDATE()-1 File From the Folder
+	declare @Cmd1 varchar(100)
+	set @Cmd1 = 'del F:\Shipping\Data_' + replace(cast(getdate()-1 as date),'-','') + '.xlsx'
+	print @cmd1
+	exec xp_cmdshell @cmd;
+
+
+	SELECT distinct
+
+		--c.v2_se_event_code,
+
+		--c.gen_date,
+
+		--gen_time,
+
+		  --gen_date,
+
+		  convert(varchar(20),gen_awb) as gen_awb,
+
+		  convert(varchar(10),dbo.fN_SIS_GetAWB_CheckPoint_Count(gen_awb,gen_date)) as itemCount,
+
+		  convert(varchar(100),s.sd_acct) as sd_acct	
+
+		into #temp
+
+			FROM	checkpoints c WITH(NOLOCK,NOWAIT) INNER JOIN shipment_detail s  WITH(NOLOCK,NOWAIT) ON c.[gen_awb]=s.sd_awb
+
+			WHERE	v2_se_event_code='WC'
+
+					and  s.sd_acct in (
+
+							'530343402'
+
+							,'530525985'
+
+							,'530624604'
+
+							,'530714129'
+
+							,'530719322'
+
+							,'530747873'
+
+							,'530764984'
+
+							,'530778419'
+
+							,'530954329'
+
+					)
+
+					AND	cast(gen_date as date) =cast(GETDATE()-10 as date)
+
+					AND	NOT EXISTS (SELECT 1 FROM checkpoints a  WITH(NOLOCK,NOWAIT)WHERE a.[gen_awb]=c.gen_awb
+
+					AND	cast(a.gen_date as date) =cast(GETDATE()-10 as date)
+
+					AND v2_se_event_code='OK')
+
+				--AND gen_awb ='3098604073'
+
+declare @filename varchar(50) = 'F:\Shipping\Data_' + replace(cast(getdate() as date),'-','') + '.xlsx';
+	print @filename
+
+	declare @sql nvarchar(max);
+--SET @sql = 'INSERT INTO OPENROWSET (''Microsoft.ACE.OLEDB.12.0'', ''Excel 8.0;HDR=no;Empty Text Mode=NullAsEmpty;Database=' + @filename + ';'', ''select * from [Sheet1$]'')'
+             --insert into OPENROWSET('Microsoft.ACE.OLEDB.12.0','Excel 8.0;HDR=no;Empty Text Mode=NullAsEmpty;''Database=F:\Shipping\''' +@filename + '';'', 'SELECT * FROM [Sheet1$]') 
+
+
+SET @sql= 'insert into OPENROWSET(''Microsoft.ACE.OLEDB.12.0'',''Excel 8.0;HDR=no;Empty Text Mode=NullAsEmpty;Database='+@fileName+';'', ''SELECT * FROM [Sheet1$]'') select * from #temp'
+
+
+print @sql;
+EXEC SP_EXECUTESQL @sql;
+
+
+	--insert into OPENROWSET('Microsoft.ACE.OLEDB.12.0','Excel 8.0;HDR=no;Empty Text Mode=NullAsEmpty;Database=F:\Shipping\N'@filename';', 'SELECT * FROM [Sheet1$]') 
+
+--select * FROM #temp
+
+
+
+drop table #temp
+
+
+
+END
+
+
