@@ -1,0 +1,18 @@
+
+========BCP Command to Create Folder=========
+exec xp_create_subdir '\\199.40.47.8\data\Pramit\Shipping\mynewfolder' --Shared Drive Folder Path
+
+exec xp_create_subdir 'F:\Shipping\mynewfolder' -- Same Directory Path
+
+
+
+========BCP Command to Delete Existing File============
+	declare @Cmd_DelFile varchar(100)
+	set @Cmd_DelFile = 'del F:\Shipping\Data_' + replace(cast(getdate() as date),'-','') + '.xlsx'
+	exec xp_cmdshell @Cmd_DelFile;
+  
+
+=======BCP Command To Copy File ============
+	declare @Cmd varchar(100)
+	set @Cmd = 'copy F:\Shipping\Test.xlsx F:\Shipping\Data_' + replace(cast(getdate() as date),'-','') + '.xlsx'
+	exec xp_cmdshell @cmd;
