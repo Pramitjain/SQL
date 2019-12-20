@@ -1,0 +1,3 @@
+========== Write Content in txt File =========
+
+exec xp_cmdshell 'echo HI > F:\MultipleDeliveryAttempt\Report\test.txt'
