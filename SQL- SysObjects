@@ -9,3 +9,6 @@ select * from sys.tables
 select * from sys.procedures 
 
 select * from sys.types 
+
+
+SELECT suser_sname(owner_sid) , * FROM sys.databases 
