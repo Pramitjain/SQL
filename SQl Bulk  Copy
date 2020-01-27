@@ -1,0 +1,34 @@
+public static void InsertBulkCopy(DataTable dt)
+        {
+            try
+            {
+                string ConnString_ManifestPrinting = ConfigurationManager.ConnectionStrings["ConnString"].ToString();
+
+                using (SqlBulkCopy sqlbc = new SqlBulkCopy(ConnString_ManifestPrinting))
+                {
+                    sqlbc.DestinationTableName = "t_test";
+                    sqlbc.ColumnMappings.Add("f_RefSoyaOil", "f_RefSoyaOil");
+                    sqlbc.ColumnMappings.Add("f_ExpDt", "f_ExpDt");
+                    sqlbc.ColumnMappings.Add("f_Open", "f_Open");
+                    sqlbc.ColumnMappings.Add("f_High", "f_High");
+                    sqlbc.ColumnMappings.Add("f_Low", "f_Low");
+                    sqlbc.ColumnMappings.Add("f_Close", "f_Close");
+                    sqlbc.ColumnMappings.Add("f_LTP", "f_LTP");
+                    sqlbc.ColumnMappings.Add("f_Change", "f_Change");
+                    sqlbc.ColumnMappings.Add("f_Change_Per", "f_Change_Per");
+                    sqlbc.ColumnMappings.Add("f_AV_TP", "f_AV_TP");
+                    sqlbc.ColumnMappings.Add("f_Spot_Price", "f_Spot_Price");
+                    sqlbc.ColumnMappings.Add("f_Spot_DT", "f_Spot_DT");
+                    sqlbc.ColumnMappings.Add("f_Best_Buy", "f_Best_Buy");
+                    sqlbc.ColumnMappings.Add("f_Best_Sell", "f_Best_Sell");
+                    sqlbc.ColumnMappings.Add("f_OL", "f_OL");
+
+                    sqlbc.WriteToServer(dt);
+                    sqlbc.Close();
+                }
+            }
+            catch (Exception ex)
+            {
+                string message = ex.Message;
+            }
+        }
