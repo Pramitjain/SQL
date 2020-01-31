@@ -1,0 +1,160 @@
+alter procedure usp_NA_GetNCDEXData(
+
+
+
+@PageIndex int =1,
+
+
+
+@PageSize int =5,
+
+
+
+@TotalRow bigint  output,
+
+
+
+@Searchtxt varchar(100), 
+
+
+
+@type char(10)
+
+
+
+)
+
+
+
+as
+
+
+
+begin
+
+
+
+	SET NOCOUNT ON;
+
+
+
+
+
+
+
+	select 
+
+
+
+		 f_id  as Id,
+
+
+
+		 f_RefSoyaOil as RefSoyaOil
+
+
+
+		,f_ExpDt as ExpDt
+
+
+
+		,f_Open as OpenPrice
+
+
+
+		,f_High as High
+
+
+
+		,f_Low as Low
+
+
+
+		,f_Close as ClosePrice
+
+
+
+		,f_LTP as LTP
+
+
+
+		,f_Change as Change
+
+
+
+		,f_Change_Per as Change_Per
+
+
+
+		,f_AV_TP as AV_TP
+
+
+
+		,f_Spot_Price as Spot_Price
+
+
+
+		,f_Spot_DT as Spot_DT
+
+
+
+		,f_Best_Buy as Best_Buy
+
+
+
+		,f_Best_Sell as Best_Sell
+
+
+
+		,f_OL as OL
+
+
+
+		,CAST(f_CreatedDate AS varchar(20)) as CreatedDate
+
+
+
+		,ROW_NUMBER() over(ORDER BY f_Id) as [RowNumber]
+
+
+
+		INTO #TempTable
+
+
+
+	from [t_test] with(NOLOCK) 
+	
+	where f_Active =1 
+	and 
+	CAST(f_CreatedDate as date) =
+	case when @Searchtxt != '' then LTRIM(RTRIM(LOWER(@Searchtxt))) 
+		 else CAST(GETDATE() as date)
+		end 
+
+	--OR LTRIM(RTRIM(LOWER(cast(f_CreatedDate as date)))) = LTRIM(RTRIM(LOWER(@Searchtxt))) 
+
+
+
+
+
+	 set @TotalRow =  (select count(*) from #TempTable)
+
+
+
+
+
+
+
+	 select * from #TempTable where RowNumber Between(@PageIndex-1) * @PageSize +1  and (((@PageIndex-1) * @PageSize + 1) + @PageSize)-1
+
+
+
+	 
+
+
+
+	 drop table #TempTable
+
+
+
+end
