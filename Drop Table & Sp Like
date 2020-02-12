@@ -1,0 +1,28 @@
+DECLARE @sql NVARCHAR(MAX) = N'';
+
+SELECT @sql += '
+DROP TABLE ' 
+    + QUOTENAME(s.name)
+    + '.' + QUOTENAME(t.name) + ';'
+    FROM sys.tables AS t
+    INNER JOIN sys.schemas AS s
+    ON t.[schema_id] = s.[schema_id] 
+    WHERE t.name LIKE 't_NA_%';
+
+PRINT @sql;
+EXEC sp_executesql @sql;
+
+DECLARE @sql1 NVARCHAR(MAX) = N'';
+
+SELECT @sql1 += '
+DROP procedure ' 
+    + QUOTENAME(s.name)
+    + '.' + QUOTENAME(t.name) + ';'
+    FROM sys.procedures AS t
+    INNER JOIN sys.schemas AS s
+    ON t.[schema_id] = s.[schema_id] 
+    WHERE t.name LIKE 'usp_NA_%';
+
+PRINT @sql1;
+--EXEC sp_executesql @sql1;
+
