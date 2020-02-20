@@ -1,0 +1,16 @@
+CREATE function [dbo].[function_xyz](@username varchar(200))  
+returns table  
+as  
+return (select [password] from [User] where username =@username) 
+
+
+
+SqlConnection conn=new SqlConnection(@"SQLCONNECTION STRING");  
+SqlCommand cmd = new SqlCommand("SELECT * FROM dbo.function_xyz(@username)", conn);  
+// cmd.CommandType=CommandType.StoredProcedure;  
+cmd.Parameters.AddWithValue("@username","username");  
+SqlDataAdapter da = new SqlDataAdapter(cmd);  
+DataTable dt = new DataTable();  
+da.Fill(dt);  
+string str = dt.Rows[0][0].ToString();  
+Response.Write(str.ToString());  
