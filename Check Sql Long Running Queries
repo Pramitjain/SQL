@@ -1,0 +1,8 @@
+
+SELECT TOP 20
+        R.session_id, R.status, R.start_time, R.command, Q.text
+FROM
+        sys.dm_exec_requests R
+        CROSS APPLY sys.dm_exec_sql_text(R.sql_handle) Q
+--WHERE R.status in ('runnable')
+ORDER BY R.start_time
