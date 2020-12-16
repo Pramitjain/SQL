@@ -66,3 +66,6 @@ FROM  assigned_mode_contract
 WHERE hpano = @hpano
 
 convert(varchar,f_Entry_Date,103) as entrydate
+
+
+select 'ABC' + SPACE(1) + 'PQW'
