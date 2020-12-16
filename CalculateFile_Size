@@ -1,0 +1,8 @@
+	CASE WHEN ISNULL(b.f_fileSize,0) <= 1024                         THEN   CONVERT(NVARCHAR, ISNULL(b.f_fileSize,0)) + ' BYTES'
+            WHEN ISNULL(b.f_fileSize,0) >1024 AND ISNULL(b.f_fileSize,0) <= 1048576         THEN   CONVERT(NVARCHAR, ISNULL(b.f_fileSize,0)/1024) + ' KB'
+            WHEN ISNULL(b.f_fileSize,0) >1048576 AND ISNULL(b.f_fileSize,0) <= 1073741824       THEN   CONVERT(NVARCHAR, ISNULL(b.f_fileSize,0)/1048576) + ' MB'
+            WHEN ISNULL(b.f_fileSize,0) >1073741824 AND ISNULL(b.f_fileSize,0) <= 109951162777  THEN   CONVERT(NVARCHAR, ISNULL(b.f_fileSize,0)/1073741824) + ' GB'
+            ELSE CONVERT(NVARCHAR, ISNULL(b.f_fileSize,0)/109951162777) + ' TB'
+       END
+
+					 as FileSize,
