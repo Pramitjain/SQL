@@ -1,0 +1,29 @@
+ ALTER PROCEDURE [dbo].[user_MST_T_INSERT_SP]
+(
+
+	@user_id varchar(100), 
+	@emailid varchar(100), 
+	@name varchar(100), 
+	@password varchar(100), 
+	@ERROR_NO INT = '' OUTPUT ,
+	@MESSAGE VARCHAR(1000) OUTPUT,
+	@ID INT OUTPUT
+)
+AS
+BEGIN
+
+	
+	INSERT INTO dbo.Tbl_User_Master(user_id, emailid, name, password,active_yn,auth_flag,created_dt)
+	VALUES(@user_id,@emailid,@name,@password,'Y',1,GETDATE())
+	
+	SELECT @ERROR_NO = COALESCE(NULLIF(@ERROR_NO, 0), @@ERROR)
+			IF @ERROR_NO <> 0 
+				GOTO ERR_LABEL 
+SET @ID = @@IDENTITY
+	
+	ERR_LABEL:
+	BEGIN
+		SELECT @MESSAGE= DESCRIPTION FROM MASTER..SYSMESSAGES WHERE ERROR=@ERROR_NO;
+	END
+
+END
