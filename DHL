@@ -1,0 +1,380 @@
+DHL
+
+USE [SIS]
+GO
+/****** Object:  StoredProcedure [dbo].[usp_SIS_GetMultipleDeliveryAttemptReport]    Script Date: 2/3/2021 3:49:38 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+ALTER  procedure [dbo].[usp_SIS_GetMultipleDeliveryAttemptReport]
+
+as
+
+BEGIN
+		declare @Filepath varchar(200);
+		set @Filepath = 'F:\MultipleDeliveryAttempt\Report\MultipleDeliveryAttempt_' +convert(varchar(100), LEFT(REPLACE(REPLACE(SYSDATETIME(),':',''),' ','') ,16)) +'.xls' ;
+		
+
+		--Delete All Existing Files from Report Folder
+		declare @Cmd_DelFile varchar(100)
+			set @Cmd_DelFile = 'del F:\MultipleDeliveryAttempt\Report\*.xls'
+			exec xp_cmdshell @Cmd_DelFile;
+
+		declare @Cmd varchar(500)
+		set @Cmd = 'copy F:\MultipleDeliveryAttempt\Template.xls ' + @Filepath
+		exec xp_cmdshell @cmd;
+
+	DECLARE @SQL VARCHAR(4000)
+
+   SELECT distinct
+		  convert(varchar(20),ISNULL(gen_awb,'')) as gen_awb,
+		  convert(varchar(100),ISNULL(s.sd_acct,'')) as sd_acct,
+		  cast(MIN(gen_date) as date) as gen_date
+		into #temptable_DeliveryAttempt
+			FROM	checkpoints c WITH(NOLOCK,NOWAIT) INNER JOIN shipment_detail s  WITH(NOLOCK,NOWAIT) ON c.[gen_awb]=s.sd_awb
+			WHERE	v2_se_event_code='WC'
+					and  s.sd_acct in (
+							 '530343402'
+							,'530525985'
+							,'530624604'
+							,'530714129'
+							,'530719322'
+							,'530747873'
+							,'530764984'
+							,'530778419'
+							,'530954329')
+					AND	cast(gen_date as date) >= DATEADD(day,-7, GETDATE())
+					AND	NOT EXISTS (SELECT 1 FROM checkpoints a  WITH(NOLOCK,NOWAIT) WHERE a.[gen_awb]=c.gen_awb
+					--AND	cast(a.gen_date as date) =cast(GETDATE()-10 as date)
+					AND v2_se_event_code in ('OK', 'TI') ) group by gen_awb,sd_acct
+		
+		--select * into #temp from #temptable_DeliveryAttempt 
+		--select * from #temp 
+		select * into #temp from #temptable_DeliveryAttempt c where not EXISTS(select 1 from t_SIS_MultipleShipmentDelivery_AttemptDetails da  WITH(NOLOCK,NOWAIT) where da.[f_AWBNo] =c.gen_awb and da.f_Active =1)
+
+--if((select count(*) from #temp)=0) BEGIN return END;
+
+select * into #temptable_DeliveryAttemptdeatils from 		
+ (select 
+		distinct
+		convert(varchar(100),c.gen_awb) as gen_awb,
+		a.sd_acct,
+		convert(varchar(100),c.v2_se_event_code) as v2_se_event_code,
+		convert(varchar(200),cast(c.gen_date as date)) as chk_pnt_date,
+		convert(varchar(200),RIGHT(c.gen_time,8)) as chk_pnt_time,
+		c.gen_stn as chk_pnt_stn,
+		c.gen_sub as chk_pnt_sub,
+		sd_shpr,
+		sd_cnsg as sd_cnee,
+		sd_orig,
+		sd_dest,
+		sd_gbl_prod,
+		c.v2_se_event_remark,
+		convert(varchar(200),GETDATE()) as ReportGeneratedDate,
+		ISNULL(dbo.fN_SIS_GetAWB_CheckPoint_Count(a.gen_awb,a.gen_date),0) as itemCount 
+		--ROW_NUMBER() over(partition by a.gen_AWB order by a.gen_date ) as RowNum
+		from #temp a WITH(NOLOCK,NOWAIT) 
+			 --inner join shipment_detail b WITH(NOLOCK,NOWAIT) on a.sd_acct = b.sd_acct
+			 inner Join (
+			 Select   sd.sd_shpr,
+						sd.sd_cnsg,
+						sd.sd_orig,
+						sd.sd_dest,
+						sd.sd_gbl_prod,
+						sd.sd_acct,
+						sd_awb  
+			 from shipment_detail sd  where (sd.sd_cnsg is not NULL and  sd.sd_shpr is not null)
+			 ) as d ON d.sd_acct=a.sd_acct and  d.sd_awb =  a.gen_awb
+			 inner join checkpoints c WITH(NOLOCK,NOWAIT) on c.gen_awb = a.gen_awb
+			 and cast(c.gen_date as date ) >= a.gen_date
+			 and c.v2_se_event_code in ('BA','RD','CM','CA','NH','ND')) C order by C.sd_acct, C.gen_awb;
+			 --) c where c.RowNUM < 3 and c.itemCount >1 order by C.sd_acct, C.gen_awb ;
+			 
+			 select * into #temptable_DeliveryAttemptdeatils_1 from
+(select  ROW_NUMBER() over(partition by gen_AWB order by chk_pnt_date ) as RowNum , *  from #temptable_DeliveryAttemptdeatils where itemcount > 1
+) as  a where a.RowNUM < 3
+			 
+			 alter table #temptable_DeliveryAttemptdeatils_1 drop column RowNum,itemCount
+
+			 create table temptable_DeliveryAttemptdeatils_1 (gen_awb varchar(100),sd_acct varchar(100),v2_se_event_code varchar(100),chk_pnt_date varchar(200), chk_pnt_time varchar(200), chk_pnt_stn varchar(100),chk_pnt_sub varchar(100),sd_shpr varchar(100),sd_cnee varchar(100),sd_orig varchar(100),sd_dest varchar(100), sd_gbl_prod varchar(100), v2_se_event_remark varchar(400), ReportGeneratedDate varchar(200))
+
+			 insert into temptable_DeliveryAttemptdeatils_1 values ('gen_awb','sd_acct','v2_se_event_code','chk_pnt_date','chk_pnt_time','chk_pnt_stn',		'chk_pnt_sub','sd_shpr','sd_cnee','sd_orig','sd_dest','sd_gbl_prod','v2_se_event_remark','ReportGeneratedDate')
+			 insert into temptable_DeliveryAttemptdeatils_1 select * from #temptable_DeliveryAttemptdeatils_1
+			 --select * into temptable_DeliveryAttemptdeatils_1 from #temptable_DeliveryAttemptdeatils_1
+
+		
+		SET @SQL='master..xp_cmdshell ''bcp "SELECT * FROM SIS.DBO.[temptable_DeliveryAttemptdeatils_1] " QUERYOUT "' + @Filepath +'" -e -c -q -R -k -T -S"' + @@SERVERNAME +'" -U"'+ 'sa' +'" -P"'+ 'pass@w0rd' +'"''';         
+
+		execute(@SQL)     
+	
+	--select * from #temp
+
+	--if((select count(*) from #temp) >0)
+		--begin
+			declare @spids t_SIS_MultipleShipmentDelivery_Attempt_type 
+			
+			insert into @spids select distinct gen_awb,sd_acct  from #temptable_DeliveryAttemptdeatils_1
+			
+			exec usp_SIS_InsertMultipleShipmentDelivery_Attempt @tblC = @spids, @FilePath=@Filepath
+			
+			exec usp_SIS_MultipleShipmentDeliveryAttempt_SendBulk_EMAIL
+			
+		--end
+
+	drop table #temptable_DeliveryAttemptdeatils
+	drop table #temptable_DeliveryAttemptdeatils_1;
+	drop table #temptable_DeliveryAttempt;
+	drop table #temp
+	drop table temptable_DeliveryAttemptdeatils_1
+  
+END
+
+USE [SIS]
+GO
+/****** Object:  StoredProcedure [dbo].[usp_SIS_InsertMultipleShipmentDelivery_Attempt]    Script Date: 2/3/2021 3:49:57 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+ALTER procedure [dbo].[usp_SIS_InsertMultipleShipmentDelivery_Attempt](
+@tblC t_SIS_MultipleShipmentDelivery_Attempt_type READONLY,
+@FilePath varchar(300)
+)
+as
+begin
+	print 'Me'
+	declare @count int = 0;declare @rowid bigint;
+	set @count = (select ISNULL(count(*),0) from @tblC);
+	insert into t_SIS_MultipleShipmentDelivery_Attempt(f_FilePath,f_TotalAwbCount,f_Active,f_Createdby,f_CreatedbyUserId,f_CreatedDate,f_CreatedIp) 
+	values(@FilePath, @count, 1 ,'System','99999',GETDATE(),'::1')
+	set @rowid = SCOPE_IDENTITY()
+	declare @DeliveryAttemp_Code varchar(100);
+	set @DeliveryAttemp_Code = (select f_DeliveryAttemp_Code from t_SIS_MultipleShipmentDelivery_Attempt WITH(NOLOCK,NOWAIT) where f_id =@rowid)
+	update a set 
+		   a.f_Active =0,
+		   f_Updatedby ='System',
+		   f_UpdatedbyUserId ='99999',
+		   f_UpdatedDate= GETDATE(),
+		   f_UpdatedIp ='::1'
+	 from t_SIS_MultipleShipmentDelivery_AttemptDetails a inner join @tblC b on a.[f_AWBNo] = b.[gen_awb] and f_Active =1 
+	insert into t_SIS_MultipleShipmentDelivery_AttemptDetails(f_DeliveryAttemp_Code, f_AWBNo, f_Sd_acct, f_Active, f_Createdby, f_CreatedbyUserId,
+f_CreatedDate, f_CreatedIp)
+			select @DeliveryAttemp_Code, a.[gen_awb], a.[sd_acct], 1, 'System', '99999', GETDATE(), '::1' from @tblC a 
+			end
+
+
+
+
+=============================
+Bulk Email
+
+ALTER procedure [dbo].[usp_SIS_MultipleShipmentDeliveryAttempt_SendBulk_EMAIL]
+
+as
+
+begin
+
+	DECLARE @Distinct_AWB varchar(20)
+	DECLARE @Mail_Body varchar(max);
+
+	DECLARE @uid int, @File_attachement varchar(max), @DeliveryAttemp_Code varchar(100), @TotalAwbCount int, @HTML varchar(max), @Subject varchar(300)
+
+	DECLARE MAIL_CUR CURSOR FOR
+	
+	SELECT  a.f_Id,
+
+		    a.f_DeliveryAttemp_Code, 
+
+			a.f_FilePath, 
+
+			a.f_TotalAwbCount
+
+			
+
+			 FROM t_SIS_MultipleShipmentDelivery_Attempt a WITH(NOLOCK) WHERE (ISNULL(a.f_EmailSent ,0)=0 or a.f_EmailSent =0) 
+
+			 --and a.f_PdfHdr_Sequence ='SEQNO30143' and a.f_id=42928
+
+	 	OPEN MAIL_CUR
+
+	FETCH NEXT FROM MAIL_CUR INTO @uid, @DeliveryAttemp_Code, @File_attachement, @TotalAwbCount
+
+	WHILE @@FETCH_STATUS = 0
+
+	 BEGIN
+
+		 if(@TotalAwbCount=0)
+
+		begin
+
+			declare @todayDate varchar(50);
+
+			set @todayDate = (select convert(varchar(12),GETDATE(),106));
+
+			set @HTML='Dear Team,<br><br> No New Airway bill found with the criteria for Multiple Delivery Attempt on ' + @todayDate + '.<br><br>Best Regards,<br><br>DHL Express.';
+
+			set @File_attachement ='';
+
+		end
+
+	 else
+
+		begin
+
+			set @HTML='Dear Team,<br><br>Please find attached Excel File as data for Multiple Delivery Attempt.<br/><br/>@DistAWB<br><br>Best Regards,<br><br>DHL Express.';
+
+			set @File_attachement =REPLACE(REPLACE(Replace(@File_attachement,'$',':'),';',''),'##',';');			
+
+			set @Mail_Body ='';
+		set @Mail_Body ='<table border="1" cellpadding="5"><tr><td>AWB</td></tr>';
+		DECLARE Mail_Body_CUR CURSOR FOR
+			SELECT distinct  a.f_AWBNo FROM t_SIS_MultipleShipmentDelivery_AttemptDetails a WITH(NOLOCK) WHERE f_DeliveryAttemp_Code = @DeliveryAttemp_Code
+	 	OPEN Mail_Body_CUR
+
+		FETCH NEXT FROM Mail_Body_CUR INTO @Distinct_AWB
+			
+		WHILE @@FETCH_STATUS = 0
+		 BEGIN
+			select @Mail_Body +=  '<tr><td>' + @Distinct_AWB + '</td></tr>'
+			FETCH NEXT FROM Mail_Body_CUR INTO @Distinct_AWB
+		 end
+
+		 select @Mail_Body +='</table>';
+	close Mail_Body_CUR
+
+	deallocate Mail_Body_CUR
+
+	--select  @Mail_Body ;
+
+	set @HTML = Replace(@HTML,'@DistAWB',@Mail_Body);
+
+		END
+
+		 declare @result int ;
+
+	 	 set @Subject = 'Multiple Delivery Attempt Report';
+
+		--Bind Template    
+	
+
+------------------------------------------------------------------------------------------------
+
+--print @HTMl;
+
+   --Send Email Logic Starts
+
+      	EXEC @result = MSDB.DBO.SP_SEND_DBMAIL
+
+
+
+					              @profile_name = 'Reports_Mail',  
+
+								  @RECIPIENTS='Kunda.devkar@dhl.com; Sharjil.kohari@dhl.com; Meghana.kapoor@dhl.com; Suja.Sukumar@dhl.com; Rakesh.Joshi@dhl.com;Vivek.Ramachandran@dhl.com; R.Dugad@dhl.com; Rajesh.Singha@dhl.com; Radhika.vivek@dhl.com',
+								  
+					              @copy_recipients ='',
+
+								  --@RECIPIENTS ='pramit.jain@dhl.com;',
+
+								  --@copy_recipients ='vivek.yadav3@dhl.com',
+
+					              @blind_copy_recipients='',
+								  
+
+					              @SUBJECT=@Subject,
+
+
+
+					              @BODY=@HTML,
+
+
+
+					              @BODY_FORMAT = 'HTML',
+
+								  
+
+								  @file_attachments= @File_attachement
+
+
+
+								 --@file_attachments='U:\Shipping Bill\GSTINPDF\27BIFPK6086A1ZC_SEQNO2_31052019_142808_636949096886507067.pdf;U:\Shipping Bill\GSTINPDF\13122018H4_Print_CSB_V_Sample_15052019_094633.pdf'
+
+
+
+	--Send Email Logic Ends
+
+
+
+
+
+	-- After Sending Email Update the table  Flag
+
+
+
+	
+
+	if(@result=0)
+
+		BEGIN
+
+				update t_SIS_MultipleShipmentDelivery_Attempt 
+
+					   set f_EmailSent=1,
+
+						   f_EmailSentDateTime= GETDATE(),
+
+						   f_Updatedby ='SYSTEM',
+
+						   f_UpdatedbyUserId='SYSTEM SCHEDULE',
+
+						   f_UpdatedDate= GETDATE()
+
+						where f_Id =@uid and f_DeliveryAttemp_Code= @DeliveryAttemp_Code and f_Active = 1 and ISNULL(f_EmailSent,'') =''
+
+	 	 END
+
+	ELSE
+
+		BEGIN
+
+				update t_SIS_MultipleShipmentDelivery_Attempt 
+
+						set f_EmailSent=2,
+
+							--f_EmailErrorMessage= @@ERROR ,
+
+							f_Updatedby ='SYSTEM',
+
+							f_UpdatedbyUserId='SYSTEM SCHEDULE',
+
+							f_UpdatedDate= GETDATE()
+
+						where f_Id =@uid and f_DeliveryAttemp_Code= @DeliveryAttemp_Code and f_Active = 1 and ISNULL(f_EmailSent,'') =''
+
+		END
+
+	 --print @GSTINNO
+
+
+
+      FETCH NEXT FROM MAIL_CUR INTO @uid, @DeliveryAttemp_Code, @File_attachement, @TotalAwbCount
+
+
+
+	end
+
+
+
+	close MAIL_CUR
+
+	deallocate MAIL_CUR
+
+
+
+end
+
+
+===================================
+
+
+
